@@ -62,6 +62,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY app.py .
+COPY setup_minimal_db.py .
 COPY .env.example .
 
 # Create directories for data and logs
