@@ -1,0 +1,148 @@
+# JurisBrain Legal Knowledge API - Docker Compose Configuration
+# Provides easy local development and production deployment
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # JurisBrain API Service
+  # =============================================================================
+  jurisbrain-api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: development  # Use 'production' for production builds
+    container_name: jurisbrain-api
+    ports:
+      - "8000:8000"
+    environment:
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - DB_PATH=/app/legal_db
+      - COLLECTION_NAME=law_books
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=INFO
+    volumes:
+      # Mount the legal database (you need to have this directory)
+      - ./legal_db:/app/legal_db:ro  # Read-only for safety
+      # Mount logs directory
+      - ./logs:/app/logs
+      # Development: Mount source code for hot reload
+      - ./app.py:/app/app.py
+      - ./.env:/app/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - jurisbrain-network
+
+  # =============================================================================
+  # Nginx Reverse Proxy (Optional - for production)
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: jurisbrain-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL certificates
+    depends_on:
+      - jurisbrain-api
+    restart: unless-stopped
+    networks:
+      - jurisbrain-network
+    profiles:
+      - production  # Only start with --profile production
+
+  # =============================================================================
+  # Monitoring with Prometheus (Optional)
+  # =============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: jurisbrain-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - jurisbrain-network
+    profiles:
+      - monitoring
+
+  # =============================================================================
+  # Grafana Dashboard (Optional)
+  # =============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: jurisbrain-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - jurisbrain-network
+    profiles:
+      - monitoring
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  jurisbrain-network:
+    driver: bridge
+    name: jurisbrain-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# =============================================================================
+# Usage Instructions:
+# =============================================================================
+#
+# Development Setup:
+# 1. Copy .env.example to .env and fill in your API keys
+# 2. Ensure you have the legal_db directory with your ChromaDB data
+# 3. Run: docker-compose up --build
+#
+# Production Setup:
+# 1. Set environment to production in .env
+# 2. Run: docker-compose --profile production up -d
+#
+# With Monitoring:
+# 1. Run: docker-compose --profile monitoring up -d
+# 2. Access Grafana at http://localhost:3000 (admin/admin123)
+# 3. Access Prometheus at http://localhost:9090
+#
+# Commands:
+# - Start services: docker-compose up -d
+# - View logs: docker-compose logs -f jurisbrain-api
+# - Stop services: docker-compose down
+# - Rebuild: docker-compose up --build
+# - Scale API: docker-compose up --scale jurisbrain-api=3
+#
+# =============================================================================

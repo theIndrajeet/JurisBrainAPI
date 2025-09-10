@@ -1,0 +1,313 @@
+# JurisBrain Legal Knowledge API - Git Ignore File
+
+# =============================================================================
+# Environment & Configuration
+# =============================================================================
+
+# Environment variables (contains sensitive data)
+.env
+.env.local
+.env.production
+
+# Configuration files with secrets
+config.json
+secrets.json
+
+# =============================================================================
+# Python
+# =============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# =============================================================================
+# Database & Data
+# =============================================================================
+
+# ChromaDB database files
+legal_db/
+*.db
+*.sqlite
+*.sqlite3
+
+# Data files
+*.json.gz
+*.csv
+*.xlsx
+*.parquet
+
+# Processed files
+processed_texts/
+_processed_files.log
+processing_log.txt
+
+# =============================================================================
+# Logs & Temporary Files
+# =============================================================================
+
+# Log files
+logs/
+*.log
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# =============================================================================
+# IDEs & Editors
+# =============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# =============================================================================
+# Docker
+# =============================================================================
+
+# Docker volumes
+docker-volumes/
+
+# Docker compose override
+docker-compose.override.yml
+docker-compose.local.yml
+
+# =============================================================================
+# Cloud & Deployment
+# =============================================================================
+
+# Railway
+.railway/
+
+# Heroku
+.heroku/
+
+# Vercel
+.vercel/
+
+# Netlify
+.netlify/
+
+# AWS
+.aws/
+
+# =============================================================================
+# Node.js (for examples)
+# =============================================================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# =============================================================================
+# Monitoring & Analytics
+# =============================================================================
+
+# Prometheus data
+prometheus_data/
+
+# Grafana data
+grafana_data/
+
+# =============================================================================
+# SSL/TLS Certificates
+# =============================================================================
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.csr
+ssl/
+certs/
+
+# =============================================================================
+# Backup & Archive Files
+# =============================================================================
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archive files
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# =============================================================================
+# Search Results & Cache
+# =============================================================================
+
+# API response cache
+.cache/
+cache/
+
+# Search results
+search_results.json
+results_*.json
+
+# =============================================================================
+# Development & Testing
+# =============================================================================
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Performance profiling
+*.prof
+
+# =============================================================================
+# Documentation Build
+# =============================================================================
+
+# MkDocs
+site/
+docs/build/
+
+# Sphinx
+docs/_build/
+
+# =============================================================================
+# Miscellaneous
+# =============================================================================
+
+# Local development files
+local/
+dev/
+sandbox/
+
+# User-specific files
+user_config.json
+my_*.py
+test_*.py
+debug_*.py
+
+# API keys and secrets (additional patterns)
+*_key.txt
+*_secret.txt
+api_keys.txt
+credentials.txt
