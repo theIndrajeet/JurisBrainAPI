@@ -175,16 +175,86 @@ def generate_embedding(text: str) -> List[float]:
         )
         return result['embedding']
     except Exception as e:
-        logger.error(f"Embedding generation failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to process query")
+        logger.warning(f"AI embedding failed: {e}. Using fallback search.")
+        return None  # Signal to use fallback search
+
+def fallback_text_search(query: str, limit: int, book_filter: str, collection) -> tuple:
+    """Fallback text-based search when AI embeddings are unavailable"""
+    try:
+        # Get all documents
+        all_docs = collection.get()
+        documents = all_docs.get('documents', [])
+        metadatas = all_docs.get('metadatas', [])
+        
+        # Simple text matching with scoring
+        results = []
+        query_lower = query.lower()
+        query_words = set(query_lower.split())
+        
+        for i, (doc, meta) in enumerate(zip(documents, metadatas)):
+            # Skip if book filter doesn't match
+            if book_filter and book_filter.lower() not in meta.get('source', '').lower():
+                continue
+                
+            doc_lower = doc.lower()
+            
+            # Calculate simple relevance score
+            score = 0
+            # Exact phrase match (highest score)
+            if query_lower in doc_lower:
+                score += 10
+            # Word matches
+            doc_words = set(doc_lower.split())
+            word_matches = len(query_words.intersection(doc_words))
+            score += word_matches * 2
+            
+            # Bonus for title/category matches
+            if 'category' in meta:
+                if any(word in meta['category'].lower() for word in query_words):
+                    score += 5
+            if 'book' in meta:
+                if any(word in meta['book'].lower() for word in query_words):
+                    score += 3
+            
+            if score > 0:
+                results.append((doc, meta, score))
+        
+        # Sort by score (descending) and limit results
+        results.sort(key=lambda x: x[2], reverse=True)
+        results = results[:limit]
+        
+        if not results:
+            # Return sample documents if no matches
+            sample_docs = documents[:limit] if documents else []
+            sample_metas = metadatas[:limit] if metadatas else []
+            sample_scores = [1.0] * len(sample_docs)
+            return sample_docs, sample_metas, sample_scores, []
+        
+        # Unpack results
+        docs, metas, scores = zip(*results)
+        sources = list(set(meta.get('source', 'Unknown') for meta in metas))
+        
+        return list(docs), list(metas), list(scores), sources
+        
+    except Exception as e:
+        logger.error(f"Fallback search failed: {e}")
+        # Return empty results
+        return [], [], [], []
 
 def search_documents(query: str, limit: int = 5, book_filter: str = None) -> tuple:
-    """Search legal documents using semantic similarity"""
+    """Search legal documents using semantic similarity or fallback text search"""
     try:
         # Generate query embedding
         query_embedding = generate_embedding(query)
         
-        # Prepare search parameters
+        collection = get_database()
+        
+        # If AI embedding failed, use fallback text search
+        if query_embedding is None:
+            logger.info("Using fallback text-based search")
+            return fallback_text_search(query, limit, book_filter, collection)
+        
+        # Prepare search parameters for AI search
         search_params = {
             "query_embeddings": [query_embedding],
             "n_results": limit
@@ -194,8 +264,7 @@ def search_documents(query: str, limit: int = 5, book_filter: str = None) -> tup
         if book_filter:
             search_params["where"] = {"source": {"$regex": f".*{book_filter}.*"}}
         
-        # Perform search
-        collection = get_database()
+        # Perform AI-powered search
         results = collection.query(**search_params)
         
         # Process results
