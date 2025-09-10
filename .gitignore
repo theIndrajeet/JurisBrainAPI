@@ -314,3 +314,4 @@ debug_*.py
 *_secret.txt
 api_keys.txt
 credentials.txt
+render-mcp-server/

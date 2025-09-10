@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JurisBrain Legal Knowledge API - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .search-section {
+            margin-bottom: 30px;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .search-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .search-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .results {
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .result-source {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .result-score {
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .result-content {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .result-meta {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .api-info {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .api-info h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ JurisBrain Legal Knowledge API</h1>
+            <p>Free, Open-Source Legal Research API</p>
+        </div>
+        
+        <div class="content">
+            <div class="api-info">
+                <h3>🌐 API Endpoint</h3>
+                <p><strong>Base URL:</strong> <code>https://jurisbrainapi.onrender.com</code></p>
+                <p><strong>Documentation:</strong> <a href="https://jurisbrainapi.onrender.com/docs" target="_blank">https://jurisbrainapi.onrender.com/docs</a></p>
+                <p><strong>GitHub:</strong> <a href="https://github.com/theIndrajeet/JurisBrainAPI" target="_blank">https://github.com/theIndrajeet/JurisBrainAPI</a></p>
+            </div>
+            
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <div class="stat-number">-</div>
+                    <div class="stat-label">Total Documents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">-</div>
+                    <div class="stat-label">Legal Sources</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">-</div>
+                    <div class="stat-label">Categories</div>
+                </div>
+            </div>
+            
+            <div class="search-section">
+                <h2>🔍 Search Legal Documents</h2>
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Enter your legal query (e.g., 'fundamental rights', 'contract law', 'tort liability')" value="fundamental rights">
+                    <button id="searchBtn" class="search-btn">Search</button>
+                </div>
+                
+                <div class="filters">
+                    <input type="number" id="limitInput" class="filter-input" placeholder="Limit (default: 5)" value="5" min="1" max="20">
+                    <input type="text" id="bookFilter" class="filter-input" placeholder="Filter by book (optional)">
+                </div>
+            </div>
+            
+            <div id="results" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://jurisbrainapi.onrender.com';
+        
+        // Load stats on page load
+        loadStats();
+        
+        // Search functionality
+        document.getElementById('searchBtn').addEventListener('click', performSearch);
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const data = await response.json();
+                
+                document.querySelectorAll('.stat-number')[0].textContent = data.total_documents || '-';
+                document.querySelectorAll('.stat-number')[1].textContent = data.total_sources || '-';
+                document.querySelectorAll('.stat-number')[2].textContent = data.categories?.length || '-';
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+        
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const limit = parseInt(document.getElementById('limitInput').value) || 5;
+            const bookFilter = document.getElementById('bookFilter').value.trim();
+            
+            if (!query) {
+                alert('Please enter a search query');
+                return;
+            }
+            
+            const searchBtn = document.getElementById('searchBtn');
+            const resultsDiv = document.getElementById('results');
+            
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Searching...';
+            resultsDiv.innerHTML = '<div class="loading">🔍 Searching legal documents...</div>';
+            
+            try {
+                const payload = {
+                    query: query,
+                    limit: limit
+                };
+                
+                if (bookFilter) {
+                    payload.book_filter = bookFilter;
+                }
+                
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    displayResults(data);
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            <strong>No results found</strong><br>
+                            Try different keywords or check if the service is running.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <strong>Search failed</strong><br>
+                        Error: ${error.message}<br>
+                        The service might be spinning up (free tier). Please try again in a moment.
+                    </div>
+                `;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
+        }
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = `
+                <h3>📋 Search Results (${data.total_results} found)</h3>
+                <p><strong>Query:</strong> "${data.query}"</p>
+                ${data.sources.length > 0 ? `<p><strong>Sources:</strong> ${data.sources.join(', ')}</p>` : ''}
+            `;
+            
+            data.results.forEach((result, index) => {
+                html += `
+                    <div class="result-item">
+                        <div class="result-header">
+                            <span class="result-source">${result.metadata.source}</span>
+                            <span class="result-score">Score: ${result.score.toFixed(1)}</span>
+                        </div>
+                        <div class="result-content">
+                            ${result.content}
+                        </div>
+                        <div class="result-meta">
+                            <span><strong>Book:</strong> ${result.metadata.book}</span>
+                            <span><strong>Category:</strong> ${result.metadata.category}</span>
+                            <span><strong>Page:</strong> ${result.metadata.page}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Example queries
+        const exampleQueries = [
+            'fundamental rights',
+            'constitution',
+            'contract law',
+            'tort liability',
+            'criminal law',
+            'constitutional law'
+        ];
+        
+        // Add example query buttons
+        const searchSection = document.querySelector('.search-section');
+        const exampleDiv = document.createElement('div');
+        exampleDiv.innerHTML = `
+            <h4>💡 Example Queries:</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                ${exampleQueries.map(query => 
+                    `<button onclick="document.getElementById('searchInput').value='${query}'; performSearch();" 
+                     style="padding: 8px 12px; background: #e3f2fd; border: 1px solid #1976d2; border-radius: 15px; cursor: pointer; font-size: 12px;">
+                     ${query}
+                     </button>`
+                ).join('')}
+            </div>
+        `;
+        searchSection.appendChild(exampleDiv);
+    </script>
+</body>
+</html>

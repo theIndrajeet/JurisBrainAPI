@@ -34,7 +34,23 @@ JurisBrain is a **free and open-source Legal Knowledge API** that provides devel
 | **Tort Law** | Negligence, Defamation, Nuisance | Liability principles, Damages |
 | **Property Law** | Transfer of Property, Registration | Sale, Mortgage, Lease |
 
-## 🚀 **Quick Start**
+## 🌐 **Live API**
+
+**Ready to use right now!** No setup required:
+
+- **🌐 API Endpoint**: `https://jurisbrainapi.onrender.com`
+- **📖 Interactive Docs**: [https://jurisbrainapi.onrender.com/docs](https://jurisbrainapi.onrender.com/docs)
+- **🎮 Demo Page**: Open `demo.html` in your browser
+- **🐍 Python Client**: Use `jurisbrain_client.py`
+
+### **Quick Test**
+```bash
+curl -X POST "https://jurisbrainapi.onrender.com/search" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "fundamental rights", "limit": 3}'
+```
+
+## 🚀 **Local Setup (Optional)**
 
 ### **Option 1: Docker (Recommended)**
 
@@ -94,6 +110,12 @@ open http://localhost:8000/docs
 Search across all legal documents:
 
 ```bash
+# Using the live API
+curl -X POST "https://jurisbrainapi.onrender.com/search" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "fundamental rights under Indian Constitution", "limit": 5}'
+
+# Or locally
 curl -X POST "http://localhost:8000/search" \
   -H "Content-Type: application/json" \
   -d '{"query": "fundamental rights under Indian Constitution", "limit": 5}'
@@ -140,26 +162,42 @@ curl "http://localhost:8000/sources?limit=20"
 ```python
 import requests
 
-# Search for legal information
-response = requests.post("http://localhost:8000/search", json={
+# Search for legal information using the live API
+response = requests.post("https://jurisbrainapi.onrender.com/search", json={
     "query": "Section 498A of Indian Penal Code",
     "limit": 3
 })
 
 results = response.json()
 for result in results['results']:
-    print(f"Source: {result['source']}")
+    print(f"Source: {result['metadata']['source']}")
     print(f"Content: {result['content'][:200]}...")
-    print(f"Relevance: {result['relevance_score']}")
+    print(f"Score: {result['score']}")
     print("-" * 50)
+```
+
+### **Using the Python Client**
+
+```python
+from jurisbrain_client import JurisBrainClient
+
+# Initialize client
+client = JurisBrainClient()
+
+# Search for legal information
+results = client.search("fundamental rights", limit=3)
+print(f"Found {results['total_results']} results")
+
+# Search by category
+constitutional_results = client.search_by_category("rights", "Constitutional Law")
 ```
 
 ### **JavaScript**
 
 ```javascript
-// Using fetch API
+// Using fetch API with the live API
 const searchLegal = async (query) => {
-    const response = await fetch('http://localhost:8000/search', {
+    const response = await fetch('https://jurisbrainapi.onrender.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, limit: 5 })
@@ -173,7 +211,7 @@ const searchLegal = async (query) => {
 searchLegal("contract law essentials").then(results => {
     console.log(`Found ${results.total_results} results`);
     results.results.forEach(result => {
-        console.log(`${result.source}: ${result.content.substring(0, 100)}...`);
+        console.log(`${result.metadata.source}: ${result.content.substring(0, 100)}...`);
     });
 });
 ```
