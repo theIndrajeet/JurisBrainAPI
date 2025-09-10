@@ -542,16 +542,13 @@ async def startup_event():
         logger.warning(f"⚠️ ChromaDB not found: {e}")
         logger.info("🔄 Attempting to create minimal database...")
         try:
-            # Try to create a minimal database
-            import subprocess
-            result = subprocess.run(["python", "setup_minimal_db.py"], capture_output=True, text=True)
-            if result.returncode == 0:
-                client = chromadb.PersistentClient(path=DB_PATH)
-                app.state.collection = client.get_collection(name=COLLECTION_NAME)
+            # Create minimal database directly
+            app.state.collection = recreate_database_with_correct_dimensions()
+            if app.state.collection:
                 count = app.state.collection.count()
                 logger.info(f"✅ Minimal database created: {count:,} documents available")
             else:
-                logger.error(f"❌ Failed to create minimal database: {result.stderr}")
+                logger.error("❌ Failed to create minimal database")
                 app.state.collection = None
         except Exception as setup_error:
             logger.error(f"❌ Database setup failed: {setup_error}")
