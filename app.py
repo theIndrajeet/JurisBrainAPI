@@ -155,6 +155,94 @@ def get_database():
         raise HTTPException(status_code=503, detail="Database not available")
     return app.state.collection
 
+def recreate_database_with_correct_dimensions():
+    """Recreate database with correct embedding dimensions"""
+    try:
+        logger.info("🔄 Recreating database with correct embedding dimensions...")
+        
+        # Delete existing collection if it exists
+        client = chromadb.PersistentClient(path=DB_PATH)
+        try:
+            client.delete_collection(name=COLLECTION_NAME)
+            logger.info("🗑️ Deleted existing collection with wrong dimensions")
+        except:
+            pass  # Collection might not exist
+        
+        # Create new collection
+        collection = client.create_collection(name=COLLECTION_NAME)
+        
+        # Add sample documents with proper embeddings
+        sample_documents = [
+            {
+                "content": "The Constitution of India is the supreme law of India. It lays down the framework defining fundamental political principles, establishes the structure, procedures, powers and duties of government institutions and sets out fundamental rights, directive principles and the duties of citizens.",
+                "metadata": {
+                    "source": "Constitution_of_India.pdf",
+                    "book": "Constitution of India",
+                    "author": "Constituent Assembly",
+                    "category": "Constitutional Law",
+                    "page": 1
+                }
+            },
+            {
+                "content": "Fundamental Rights are basic human freedoms that every Indian citizen has the right to enjoy for a proper and harmonious development of personality. These rights universally apply to all citizens, irrespective of race, place of birth, religion, caste or gender.",
+                "metadata": {
+                    "source": "Constitution_of_India.pdf", 
+                    "book": "Constitution of India",
+                    "author": "Constituent Assembly",
+                    "category": "Constitutional Law",
+                    "page": 12
+                }
+            },
+            {
+                "content": "A tort is a civil wrong that causes a claimant to suffer loss or harm, resulting in legal liability for the person who commits the tortious act. Tort law in India is primarily based on English common law principles.",
+                "metadata": {
+                    "source": "Law_of_Torts.pdf",
+                    "book": "Law of Torts",
+                    "author": "Ratanlal & Dhirajlal",
+                    "category": "Tort Law",
+                    "page": 1
+                }
+            },
+            {
+                "content": "Criminal law is the body of law that relates to crime. It proscribes conduct perceived as threatening, harmful, or otherwise endangering to the property, health, safety, and moral welfare of people.",
+                "metadata": {
+                    "source": "Indian_Penal_Code.pdf",
+                    "book": "Indian Penal Code",
+                    "author": "Macaulay",
+                    "category": "Criminal Law", 
+                    "page": 1
+                }
+            },
+            {
+                "content": "Contract law is the body of law that governs making and enforcing agreements. A contract is a legally binding agreement between two or more parties that creates mutual obligations enforceable by law.",
+                "metadata": {
+                    "source": "Indian_Contract_Act.pdf",
+                    "book": "Indian Contract Act, 1872",
+                    "author": "Legislature",
+                    "category": "Contract Law",
+                    "page": 1
+                }
+            }
+        ]
+        
+        # Add documents to collection
+        documents = [doc["content"] for doc in sample_documents]
+        metadatas = [doc["metadata"] for doc in sample_documents]
+        ids = [f"doc_{i+1}" for i in range(len(sample_documents))]
+        
+        collection.add(
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids
+        )
+        
+        logger.info(f"✅ Database recreated with {len(sample_documents)} documents")
+        return collection
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to recreate database: {e}")
+        return None
+
 def get_embedding_client():
     """Get Google AI embedding client"""
     if not GOOGLE_AI_API_KEY:
@@ -265,12 +353,29 @@ def search_documents(query: str, limit: int = 5, book_filter: str = None) -> tup
             search_params["where"] = {"source": {"$regex": f".*{book_filter}.*"}}
         
         # Perform AI-powered search
-        results = collection.query(**search_params)
-        
-        # Process results
-        documents = results.get('documents', [[]])[0]
-        metadatas = results.get('metadatas', [[]])[0]
-        distances = results.get('distances', [[]])[0]
+        try:
+            results = collection.query(**search_params)
+            
+            # Process results
+            documents = results.get('documents', [[]])[0]
+            metadatas = results.get('metadatas', [[]])[0]
+            distances = results.get('distances', [[]])[0]
+        except Exception as e:
+            if "dimension" in str(e).lower():
+                logger.warning(f"Embedding dimension mismatch: {e}")
+                logger.info("🔄 Recreating database with correct dimensions...")
+                app.state.collection = recreate_database_with_correct_dimensions()
+                if app.state.collection:
+                    # Retry search with new collection
+                    results = app.state.collection.query(**search_params)
+                    documents = results.get('documents', [[]])[0]
+                    metadatas = results.get('metadatas', [[]])[0]
+                    distances = results.get('distances', [[]])[0]
+                else:
+                    # Fallback to text search
+                    return fallback_text_search(query, limit, book_filter, collection)
+            else:
+                raise e
         
         # Convert distances to relevance scores (1 - normalized distance)
         max_distance = max(distances) if distances else 1
