@@ -161,7 +161,7 @@ def recreate_database_with_correct_dimensions():
         logger.info("🔄 Recreating database with correct embedding dimensions...")
         
         # Delete existing collection if it exists
-        client = chromadb.PersistentClient(path=DB_PATH)
+        client = chromadb.PersistentClient(path=DB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
         try:
             client.delete_collection(name=COLLECTION_NAME)
             logger.info("🗑️ Deleted existing collection with wrong dimensions")
@@ -405,7 +405,9 @@ async def startup_event():
     try:
         # Initialize ChromaDB
         logger.info("📚 Connecting to legal document database...")
-        client = chromadb.PersistentClient(path=DB_PATH)
+        # Disable telemetry to avoid logging errors
+        import chromadb.utils.embedding_functions as embedding_functions
+        client = chromadb.PersistentClient(path=DB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
         app.state.collection = client.get_collection(name=COLLECTION_NAME)
         
         # Test database connection
