@@ -18,12 +18,16 @@ Repository: https://github.com/theIndrajeet/JurisBrainAPI
 
 import os
 import logging
+import secrets
+import hashlib
+import json
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import chromadb
 import google.generativeai as genai
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
@@ -41,10 +45,79 @@ DB_PATH = os.getenv("DB_PATH", "legal_db")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "law_books")
 PORT = int(os.getenv("PORT", 8000))
 HOST = os.getenv("HOST", "0.0.0.0")
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+TOKENS_FILE = os.getenv("TOKENS_FILE", "api_tokens.json")
 
 # Model configurations
 EMBEDDING_MODEL = "models/embedding-001"
 TASK_TYPE = "retrieval_query"
+
+# =============================================================================
+# AUTHENTICATION SYSTEM
+# =============================================================================
+
+def load_tokens() -> Dict[str, Dict]:
+    """Load API tokens from file"""
+    try:
+        if os.path.exists(TOKENS_FILE):
+            with open(TOKENS_FILE, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        logger.error(f"Failed to load tokens: {e}")
+        return {}
+
+def save_tokens(tokens: Dict[str, Dict]):
+    """Save API tokens to file"""
+    try:
+        with open(TOKENS_FILE, 'w') as f:
+            json.dump(tokens, f, indent=2)
+    except Exception as e:
+        logger.error(f"Failed to save tokens: {e}")
+
+def generate_api_token(name: str, email: str) -> str:
+    """Generate a new API token"""
+    token = f"jb_{secrets.token_urlsafe(32)}"
+    tokens = load_tokens()
+    
+    tokens[token] = {
+        "name": name,
+        "email": email,
+        "created_at": datetime.now().isoformat(),
+        "last_used": None,
+        "usage_count": 0,
+        "is_active": True
+    }
+    
+    save_tokens(tokens)
+    return token
+
+def validate_token(token: str) -> Optional[Dict]:
+    """Validate an API token"""
+    if not token:
+        return None
+    
+    tokens = load_tokens()
+    token_data = tokens.get(token)
+    
+    if not token_data or not token_data.get("is_active", False):
+        return None
+    
+    # Update usage statistics
+    token_data["last_used"] = datetime.now().isoformat()
+    token_data["usage_count"] = token_data.get("usage_count", 0) + 1
+    save_tokens(tokens)
+    
+    return token_data
+
+def get_token_from_header(authorization: Optional[str] = Header(None)) -> Optional[str]:
+    """Extract token from Authorization header"""
+    if not authorization:
+        return None
+    
+    if authorization.startswith("Bearer "):
+        return authorization[7:]
+    return authorization
 
 # =============================================================================
 # DATA MODELS
@@ -88,6 +161,19 @@ class StatsResponse(BaseModel):
     total_sources: int
     available_categories: List[str]
     database_size: str
+
+class TokenRequest(BaseModel):
+    """Request model for API token generation"""
+    name: str = Field(..., description="Your name", min_length=1, max_length=100)
+    email: str = Field(..., description="Your email address", min_length=1, max_length=100)
+
+class TokenResponse(BaseModel):
+    """Response model for API token generation"""
+    token: str = Field(..., description="Generated API token")
+    name: str = Field(..., description="User name")
+    email: str = Field(..., description="User email")
+    created_at: str = Field(..., description="Token creation timestamp")
+    usage_instructions: Dict[str, str] = Field(..., description="Instructions for using the token")
 
 # =============================================================================
 # APPLICATION SETUP
@@ -551,8 +637,18 @@ async def get_stats():
         logger.error(f"Stats retrieval failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
 
+# Authentication dependency
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """Get current user from token (optional for now)"""
+    token = get_token_from_header(authorization)
+    if token:
+        user_data = validate_token(token)
+        if user_data:
+            return user_data
+    return None
+
 @app.post("/search", response_model=SearchResponse)
-async def search_legal_documents(request: SearchRequest):
+async def search_legal_documents(request: SearchRequest, current_user: Optional[Dict] = Depends(get_current_user)):
     """
     Search legal documents using semantic similarity
     
@@ -668,6 +764,144 @@ async def list_sources(limit: int = Query(default=50, description="Number of sou
     except Exception as e:
         logger.error(f"Source listing failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve sources")
+
+@app.post("/generate-token", response_model=TokenResponse)
+async def generate_token(request: TokenRequest):
+    """
+    Generate a new API token for accessing the JurisBrain API
+    
+    This endpoint creates a new API token that can be used to authenticate
+    requests to the API. The token is required for accessing the search endpoints.
+    
+    **Usage:**
+    1. Generate a token using this endpoint
+    2. Include the token in the Authorization header: `Bearer your_token_here`
+    3. Use the token to access search endpoints
+    """
+    try:
+        token = generate_api_token(request.name, request.email)
+        
+        return TokenResponse(
+            token=token,
+            name=request.name,
+            email=request.email,
+            created_at=datetime.now().isoformat(),
+            usage_instructions={
+                "header": "Authorization: Bearer " + token,
+                "curl_example": f'curl -H "Authorization: Bearer {token}" -X POST "https://jurisbrainapi.onrender.com/search" -H "Content-Type: application/json" -d \'{{"query": "fundamental rights", "limit": 3}}\'',
+                "python_example": f'headers = {{"Authorization": "Bearer {token}"}}\nresponse = requests.post("https://jurisbrainapi.onrender.com/search", headers=headers, json={{"query": "constitutional law"}})',
+                "javascript_example": f'fetch("https://jurisbrainapi.onrender.com/search", {{\n  method: "POST",\n  headers: {{"Authorization": "Bearer {token}", "Content-Type": "application/json"}},\n  body: JSON.stringify({{"query": "contract law"}})\n}})'
+            }
+        )
+    except Exception as e:
+        logger.error(f"Token generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate token")
+
+@app.get("/token-dashboard", response_class=HTMLResponse)
+async def token_dashboard():
+    """
+    Simple HTML dashboard for token management
+    """
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>JurisBrain API - Token Dashboard</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+            .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; }
+            .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; }
+            .form-group { margin-bottom: 20px; }
+            label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+            input[type="text"], input[type="email"] { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+            button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; }
+            button:hover { transform: translateY(-2px); }
+            .result { margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745; }
+            .token { background: #2d3748; color: #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; word-break: break-all; margin: 10px 0; }
+            .instructions { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px; }
+            .code-block { background: #2d3748; color: #e2e8f0; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; margin: 5px 0; overflow-x: auto; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🏛️ JurisBrain API</h1>
+                <p>Generate Your API Token</p>
+            </div>
+            <div class="content">
+                <form id="tokenForm">
+                    <div class="form-group">
+                        <label for="name">Your Name:</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Your Email:</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <button type="submit">Generate API Token</button>
+                </form>
+                <div id="result"></div>
+            </div>
+        </div>
+        <script>
+            document.getElementById('tokenForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = {
+                    name: formData.get('name'),
+                    email: formData.get('email')
+                };
+                
+                try {
+                    const response = await fetch('/generate-token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    document.getElementById('result').innerHTML = `
+                        <div class="result">
+                            <h3>✅ Token Generated Successfully!</h3>
+                            <p><strong>Name:</strong> ${result.name}</p>
+                            <p><strong>Email:</strong> ${result.email}</p>
+                            <p><strong>Created:</strong> ${new Date(result.created_at).toLocaleString()}</p>
+                            <div class="token">${result.token}</div>
+                            <div class="instructions">
+                                <h4>📖 How to Use Your Token:</h4>
+                                <p><strong>Authorization Header:</strong></p>
+                                <div class="code-block">Authorization: Bearer ${result.token}</div>
+                                
+                                <p><strong>cURL Example:</strong></p>
+                                <div class="code-block">${result.usage_instructions.curl_example}</div>
+                                
+                                <p><strong>Python Example:</strong></p>
+                                <div class="code-block">${result.usage_instructions.python_example}</div>
+                                
+                                <p><strong>JavaScript Example:</strong></p>
+                                <div class="code-block">${result.usage_instructions.javascript_example}</div>
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    document.getElementById('result').innerHTML = `
+                        <div class="result" style="border-left-color: #dc3545;">
+                            <h3>❌ Error</h3>
+                            <p>Failed to generate token: ${error.message}</p>
+                        </div>
+                    `;
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 # =============================================================================
 # MAIN ENTRY POINT

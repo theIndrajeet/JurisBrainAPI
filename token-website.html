@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JurisBrain API - Get Your Free API Token</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .intro {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .intro h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 2em;
+        }
+        
+        .intro p {
+            color: #666;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        input[type="text"], input[type="email"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus, input[type="email"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+        }
+        
+        .result.error {
+            border-left-color: #dc3545;
+        }
+        
+        .token-display {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 15px 0;
+            font-size: 14px;
+            border: 2px solid #4a5568;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .instructions h4 {
+            color: #1976d2;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            overflow-x: auto;
+            border: 1px solid #4a5568;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .feature-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card p {
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .api-info {
+            background: #e8f5e8;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border-left: 5px solid #28a745;
+        }
+        
+        .api-info h3 {
+            color: #155724;
+            margin-bottom: 15px;
+        }
+        
+        .api-info p {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ JurisBrain API</h1>
+            <p>Get Your Free API Token for Legal Research</p>
+        </div>
+        
+        <div class="content">
+            <div class="intro">
+                <h2>Access 1,593+ Legal Documents</h2>
+                <p>Generate your free API token to access our comprehensive database of Indian legal documents. Search through Constitutional Law, Criminal Law, Contract Law, and more with our AI-powered search engine.</p>
+            </div>
+            
+            <div class="features">
+                <div class="feature-card">
+                    <h3>🔍 Smart Search</h3>
+                    <p>AI-powered semantic search that understands legal terminology and context</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📚 Comprehensive</h3>
+                    <p>1,593+ legal document chunks covering all major areas of Indian law</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🚀 Fast & Reliable</h3>
+                    <p>High-performance API with sub-second response times</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🆓 Completely Free</h3>
+                    <p>No rate limits, no hidden costs, just free access to legal knowledge</p>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 style="color: #2c3e50; margin-bottom: 20px; text-align: center;">Generate Your API Token</h3>
+                <form id="tokenForm">
+                    <div class="form-group">
+                        <label for="name">Your Name:</label>
+                        <input type="text" id="name" name="name" required placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Your Email:</label>
+                        <input type="email" id="email" name="email" required placeholder="Enter your email address">
+                    </div>
+                    <button type="submit" class="generate-btn">Generate My Free API Token</button>
+                </form>
+            </div>
+            
+            <div id="result"></div>
+            
+            <div class="api-info">
+                <h3>🌐 API Endpoint</h3>
+                <p><strong>Base URL:</strong> <code>https://jurisbrainapi.onrender.com</code></p>
+                <p><strong>Documentation:</strong> <a href="https://jurisbrainapi.onrender.com/docs" target="_blank">https://jurisbrainapi.onrender.com/docs</a></p>
+                <p><strong>GitHub:</strong> <a href="https://github.com/theIndrajeet/JurisBrainAPI" target="_blank">https://github.com/theIndrajeet/JurisBrainAPI</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://jurisbrainapi.onrender.com';
+        
+        document.getElementById('tokenForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                name: formData.get('name'),
+                email: formData.get('email')
+            };
+            
+            const submitBtn = document.querySelector('.generate-btn');
+            const resultDiv = document.getElementById('result');
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Generating Token...';
+            resultDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Generating your API token...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${API_BASE}/generate-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <h3>✅ Token Generated Successfully!</h3>
+                        <p><strong>Name:</strong> ${result.name}</p>
+                        <p><strong>Email:</strong> ${result.email}</p>
+                        <p><strong>Created:</strong> ${new Date(result.created_at).toLocaleString()}</p>
+                        
+                        <h4 style="margin: 20px 0 10px 0;">🔑 Your API Token:</h4>
+                        <div class="token-display">
+                            ${result.token}
+                            <button class="copy-btn" onclick="copyToClipboard('${result.token}')">Copy</button>
+                        </div>
+                        
+                        <div class="instructions">
+                            <h4>📖 How to Use Your Token:</h4>
+                            
+                            <p><strong>Authorization Header:</strong></p>
+                            <div class="code-block">Authorization: Bearer ${result.token}</div>
+                            
+                            <p><strong>cURL Example:</strong></p>
+                            <div class="code-block">${result.usage_instructions.curl_example}</div>
+                            
+                            <p><strong>Python Example:</strong></p>
+                            <div class="code-block">${result.usage_instructions.python_example}</div>
+                            
+                            <p><strong>JavaScript Example:</strong></p>
+                            <div class="code-block">${result.usage_instructions.javascript_example}</div>
+                            
+                            <p style="margin-top: 15px; color: #1976d2; font-weight: bold;">
+                                💡 Tip: Save your token securely! You'll need it for all API requests.
+                            </p>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Error Generating Token</h3>
+                        <p>Failed to generate token: ${error.message}</p>
+                        <p>Please try again or check if the API service is running.</p>
+                    </div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Generate My Free API Token';
+            }
+        });
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.background = '#28a745';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#28a745';
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+                alert('Failed to copy token. Please copy it manually.');
+            });
+        }
+    </script>
+</body>
+</html>
