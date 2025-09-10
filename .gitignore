@@ -9,6 +9,9 @@
 .env.local
 .env.production
 
+# Render specific
+render.yaml
+
 # Configuration files with secrets
 config.json
 secrets.json

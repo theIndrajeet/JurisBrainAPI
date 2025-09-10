@@ -237,6 +237,24 @@ async def startup_event():
         # Test database connection
         count = app.state.collection.count()
         logger.info(f"✅ Database connected: {count:,} documents available")
+    except Exception as e:
+        logger.warning(f"⚠️ ChromaDB not found: {e}")
+        logger.info("🔄 Attempting to create minimal database...")
+        try:
+            # Try to create a minimal database
+            import subprocess
+            result = subprocess.run(["python", "setup_minimal_db.py"], capture_output=True, text=True)
+            if result.returncode == 0:
+                client = chromadb.PersistentClient(path=DB_PATH)
+                app.state.collection = client.get_collection(name=COLLECTION_NAME)
+                count = app.state.collection.count()
+                logger.info(f"✅ Minimal database created: {count:,} documents available")
+            else:
+                logger.error(f"❌ Failed to create minimal database: {result.stderr}")
+                app.state.collection = None
+        except Exception as setup_error:
+            logger.error(f"❌ Database setup failed: {setup_error}")
+            app.state.collection = None
         
         # Initialize Google AI (if API key provided)
         if GOOGLE_AI_API_KEY:
