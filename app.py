@@ -254,30 +254,27 @@ def get_embedding_client():
 # =============================================================================
 
 def generate_embedding(text: str) -> List[float]:
-    """Generate embedding for text using Google AI"""
-    try:
-        result = genai.embed_content(
-            model=EMBEDDING_MODEL,
-            content=text,
-            task_type=TASK_TYPE
-        )
-        return result['embedding']
-    except Exception as e:
-        logger.warning(f"AI embedding failed: {e}. Using fallback search.")
-        return None  # Signal to use fallback search
+    """Generate embedding for text using Google AI (optional)"""
+    # Skip AI embeddings entirely - use text search instead
+    logger.info("Using text-based search (no AI embeddings needed)")
+    return None  # Always use fallback search
 
 def fallback_text_search(query: str, limit: int, book_filter: str, collection) -> tuple:
-    """Fallback text-based search when AI embeddings are unavailable"""
+    """Advanced text-based search engine (no AI needed!)"""
     try:
         # Get all documents
         all_docs = collection.get()
         documents = all_docs.get('documents', [])
         metadatas = all_docs.get('metadatas', [])
         
-        # Simple text matching with scoring
+        # Advanced text matching with intelligent scoring
         results = []
-        query_lower = query.lower()
+        query_lower = query.lower().strip()
         query_words = set(query_lower.split())
+        
+        # Remove common words for better matching
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should'}
+        query_words = query_words - stop_words
         
         for i, (doc, meta) in enumerate(zip(documents, metadatas)):
             # Skip if book filter doesn't match
@@ -286,23 +283,65 @@ def fallback_text_search(query: str, limit: int, book_filter: str, collection) -
                 
             doc_lower = doc.lower()
             
-            # Calculate simple relevance score
+            # Calculate intelligent relevance score
             score = 0
-            # Exact phrase match (highest score)
+            
+            # 1. Exact phrase match (highest priority)
             if query_lower in doc_lower:
-                score += 10
-            # Word matches
+                score += 20
+                # Bonus for multiple occurrences
+                score += doc_lower.count(query_lower) * 5
+            
+            # 2. Word-by-word matching
             doc_words = set(doc_lower.split())
             word_matches = len(query_words.intersection(doc_words))
-            score += word_matches * 2
+            if word_matches > 0:
+                score += word_matches * 3
+                # Bonus for consecutive word matches
+                query_phrase = ' '.join(sorted(query_words))
+                if query_phrase in doc_lower:
+                    score += 10
             
-            # Bonus for title/category matches
+            # 3. Partial word matches (for legal terms)
+            for query_word in query_words:
+                if len(query_word) > 3:  # Only for meaningful words
+                    for doc_word in doc_words:
+                        if query_word in doc_word or doc_word in query_word:
+                            score += 1
+            
+            # 4. Category and book title bonuses
             if 'category' in meta:
-                if any(word in meta['category'].lower() for word in query_words):
-                    score += 5
+                category_lower = meta['category'].lower()
+                for word in query_words:
+                    if word in category_lower:
+                        score += 8
             if 'book' in meta:
-                if any(word in meta['book'].lower() for word in query_words):
-                    score += 3
+                book_lower = meta['book'].lower()
+                for word in query_words:
+                    if word in book_lower:
+                        score += 6
+            if 'source' in meta:
+                source_lower = meta['source'].lower()
+                for word in query_words:
+                    if word in source_lower:
+                        score += 4
+            
+            # 5. Legal term bonuses
+            legal_terms = {
+                'constitution': ['constitutional', 'constitution'],
+                'rights': ['fundamental', 'basic', 'human'],
+                'law': ['legal', 'statute', 'act'],
+                'court': ['judicial', 'tribunal'],
+                'contract': ['agreement', 'obligation'],
+                'criminal': ['penal', 'offence', 'crime'],
+                'tort': ['civil', 'liability', 'damages']
+            }
+            
+            for term, synonyms in legal_terms.items():
+                if term in query_lower:
+                    for synonym in synonyms:
+                        if synonym in doc_lower:
+                            score += 3
             
             if score > 0:
                 results.append((doc, meta, score))
@@ -325,7 +364,7 @@ def fallback_text_search(query: str, limit: int, book_filter: str, collection) -
         return list(docs), list(metas), list(scores), sources
         
     except Exception as e:
-        logger.error(f"Fallback search failed: {e}")
+        logger.error(f"Text search failed: {e}")
         # Return empty results
         return [], [], [], []
 
@@ -432,12 +471,12 @@ async def startup_event():
             logger.error(f"❌ Database setup failed: {setup_error}")
             app.state.collection = None
         
-        # Initialize Google AI (if API key provided)
+        # Google AI is optional - we use text-based search instead
         if GOOGLE_AI_API_KEY:
             genai.configure(api_key=GOOGLE_AI_API_KEY)
-            logger.info("🤖 AI embedding service configured")
+            logger.info("🤖 AI service available (optional)")
         else:
-            logger.warning("⚠️  Google AI API key not provided - some features may be limited")
+            logger.info("📝 Using text-based search (no AI needed)")
         
         logger.info("🎉 JurisBrain API is ready!")
         
